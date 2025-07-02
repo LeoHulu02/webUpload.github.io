@@ -12,6 +12,10 @@
     body {
       font-family: 'Inter', sans-serif;
     }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    .dialog-animate-in { animation: fadeIn 0.2s ease-out forwards; }
+    .dialog-animate-out { animation: fadeOut 0.2s ease-out forwards; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-white to-gray-100 min-h-screen px-4 py-6 text-gray-800">
@@ -19,48 +23,63 @@
   <div class="max-w-7xl mx-auto space-y-8">
     <!-- Header -->
     <header class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-      <h1 id="greeting" class="text-2xl font-semibold">Halo, User</h1>
-      <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 transition-colors text-white px-6 py-2 rounded-lg shadow text-base font-medium self-start sm:self-auto">
-        Logout
-      </button>
+      <h1 id="greeting" class="text-2xl font-semibold">Halo, {{ fullName }} </h1>
+      <div class="flex gap-3">
+        <button id="addBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow text-base font-medium">Tambah Data</button>
+        <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg shadow text-base font-medium">Logout</button>
+      </div>
     </header>
 
-    <!-- ====================== USER SECTION ====================== -->
-    <section id="userSection" class="hidden space-y-6">
-      <!-- Upload Box -->
+    <!-- Tabel Data -->
+    <section id="userSection" class="space-y-6">
       <div class="bg-white p-6 rounded-xl shadow-md">
-        <h2 class="text-xl font-semibold mb-4">Upload File</h2>
-        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-          <input type="file" id="fileInput" class="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200">
-          <button id="uploadBtn" class="bg-blue-600 hover:bg-blue-700 transition text-white px-5 py-2 rounded-lg shadow">
-            Upload
+        <h2 class="text-xl font-semibold mb-4">Daftar Data</h2>
+        <div class="overflow-x-auto rounded border border-gray-200">
+          <table class="min-w-full text-sm table-auto text-left whitespace-nowrap">
+            <thead id="tableHead" class="bg-gray-50"></thead>
+            <tbody id="userTableBody" class="divide-y divide-gray-200">
+              <tr>
+                <td colspan="5" class="px-4 py-6 text-center text-gray-500">Memuat data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Dialog Box -->
+  <div id="dialogOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div id="dialogBox" class="bg-white rounded-xl shadow-xl w-full max-w-md hidden">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 id="dialogTitle" class="text-xl font-semibold">Dialog</h3>
+          <button id="closeDialogBtn" class="text-gray-500 hover:text-gray-700">
+            ✕
           </button>
         </div>
-        <p id="status" class="text-sm text-gray-500 mt-2"></p>
-      </div>
-
-      <!-- Table User Files -->
-      <div class="bg-white p-6 rounded-xl shadow-md">
-        <h2 class="text-xl font-semibold mb-4">Daftar File Saya</h2>
-        <div class="overflow-x-auto rounded border border-gray-200">
-          <table id="userTable" class="min-w-full text-sm table-auto text-left whitespace-nowrap">
-            <!-- Baris tabel diisi via JS -->
-          </table>
+        <div id="dialogContent" class="space-y-4"></div>
+        <div class="mt-6 flex justify-end space-x-3">
+          <button id="cancelDialogBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
+          <button id="confirmDialogBtn" class="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700">Simpan</button>
         </div>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <!-- ====================== ADMIN SECTION ====================== -->
-    <section id="adminSection" class="hidden space-y-6">
-      <div class="bg-white p-6 rounded-xl shadow-md">
-        <h2 class="text-xl font-semibold mb-4">Semua File User</h2>
-        <div class="overflow-x-auto rounded border border-gray-200">
-          <table id="adminTable" class="min-w-full text-sm table-auto text-left whitespace-nowrap">
-            <!-- Baris tabel diisi via JS -->
-          </table>
-        </div>
+  <!-- Delete Confirmation -->
+  <div id="deleteConfirmOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-semibold">Konfirmasi Hapus</h3>
+        <button id="closeDeleteConfirmBtn" class="text-gray-500 hover:text-gray-700">✕</button>
       </div>
-    </section>
+      <p class="text-gray-700 mb-6">Yakin ingin menghapus data ini?</p>
+      <div class="flex justify-end space-x-3">
+        <button id="cancelDeleteBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
+        <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 rounded-lg text-white hover:bg-red-700">Hapus</button>
+      </div>
+    </div>
   </div>
 
 </body>

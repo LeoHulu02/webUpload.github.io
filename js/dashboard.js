@@ -1,170 +1,203 @@
 // ---------- Cloudinary Config ----------
-const CLOUD_NAME    = "dikwqr0lv";
+const CLOUD_NAME = "dikwqr0lv";
 const UPLOAD_PRESET = "preset_upload";
 
-// ---------- Setup Halaman ----------
+// ---------- Setup ----------
 const user = getCurrentUser();
-if (!user) {
-  // Belum login
-  window.location.href = "login.html";
-}
+if (!user) window.location.href = "login.html";
 
-// Header
-document.getElementById("greeting").textContent =
-  `Halo, ${user.fullName} (${user.role})`;
-document.getElementById("logoutBtn").addEventListener("click", () => {
+document.getElementById("greeting").textContent = `Halo, ${user.fullName} (${user.role})`;
+document.getElementById("logoutBtn").onclick = () => {
   logout();
   window.location.href = "login.html";
-});
+};
 
-// ----- DOM -----
-const userSection     = document.getElementById("userSection");
-const adminSection    = document.getElementById("adminSection");
-const userTable       = document.getElementById("userTable");
-const adminTable      = document.getElementById("adminTable");
-const fileInput       = document.getElementById("fileInput");
-const uploadBtn       = document.getElementById("uploadBtn");
-const statusText      = document.getElementById("status");
+const tableHead = document.getElementById("tableHead");
+const tableBody = document.getElementById("userTableBody");
 
-// Tampilkan sesuai role
-if (user.role === "user") {
-  userSection.classList.remove("hidden");
-  renderUserTable();
-  uploadBtn.addEventListener("click", handleUpload);
-} else {
-  adminSection.classList.remove("hidden");
-  renderAdminTable();
-}
+// ---------- Dialog Elements ----------
+const dialogOverlay = document.getElementById("dialogOverlay");
+const dialogBox = document.getElementById("dialogBox");
+const dialogTitle = document.getElementById("dialogTitle");
+const dialogContent = document.getElementById("dialogContent");
+const closeDialogBtn = document.getElementById("closeDialogBtn");
+const cancelDialogBtn = document.getElementById("cancelDialogBtn");
+const confirmDialogBtn = document.getElementById("confirmDialogBtn");
 
-// ---------- Upload ----------
-async function handleUpload() {
-  const file = fileInput.files[0];
-  if (!file) {
-    alert("Pilih file terlebih dahulu!");
-    return;
-  }
+// ---------- Delete Confirm ----------
+const deleteConfirmOverlay = document.getElementById("deleteConfirmOverlay");
+const closeDeleteConfirmBtn = document.getElementById("closeDeleteConfirmBtn");
+const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
-  statusText.textContent = "Uploading...";
+document.getElementById("addBtn").onclick = showAddDialog;
+closeDialogBtn.onclick = hideDialog;
+cancelDialogBtn.onclick = hideDialog;
+closeDeleteConfirmBtn.onclick = hideDeleteConfirm;
+cancelDeleteBtn.onclick = hideDeleteConfirm;
+
+// ---------- Cloudinary Upload ----------
+async function uploadToCloudinary(file) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
 
-  try {
-    const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, {
-      method: "POST",
-      body: formData
-    });
-    const data = await res.json();
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, {
+    method: "POST",
+    body: formData,
+  });
 
+  const data = await res.json();
+  if (!data.secure_url) throw new Error("Upload gagal");
+  return {
+    url: data.secure_url,
+    fileName: file.name,
+    fileType: file.type,
+  };
+}
+
+// ---------- Dialog Utility ----------
+function showDialog(title, content, onConfirm) {
+  dialogTitle.textContent = title;
+  dialogContent.innerHTML = content;
+  dialogOverlay.classList.remove("hidden");
+  dialogBox.classList.remove("hidden");
+  confirmDialogBtn.onclick = async () => {
+    const ok = await onConfirm();
+    if (ok !== false) hideDialog();
+  };
+}
+function hideDialog() {
+  dialogOverlay.classList.add("hidden");
+  dialogBox.classList.add("hidden");
+}
+function showDeleteConfirm(onConfirm) {
+  deleteConfirmOverlay.classList.remove("hidden");
+  confirmDeleteBtn.onclick = () => {
+    onConfirm();
+    hideDeleteConfirm();
+  };
+}
+function hideDeleteConfirm() {
+  deleteConfirmOverlay.classList.add("hidden");
+}
+
+// ---------- Render Table ----------
+function renderTable() {
+  const allFiles = getFiles();
+  const files = user.role === "admin" ? allFiles : allFiles.filter(f => f.ownerUsername === user.username);
+
+  tableHead.innerHTML = `
+    <tr>
+      <th class="px-4 py-3">No</th>
+      <th class="px-4 py-3">Judul</th>
+      <th class="px-4 py-3">Ringkasan</th>
+      <th class="px-4 py-3">File</th>
+      ${user.role === "admin" ? '<th class="px-4 py-3">User</th>' : ""}
+      <th class="px-4 py-3 text-right">Aksi</th>
+    </tr>
+  `;
+
+  tableBody.innerHTML = "";
+
+  if (!files.length) {
+    tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500">Belum ada data.</td></tr>`;
+    return;
+  }
+
+  files.forEach((f, i) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="px-4 py-2">${i + 1}</td>
+      <td class="px-4 py-2">${f.title}</td>
+      <td class="px-4 py-2">${f.summary}</td>
+      <td class="px-4 py-2"><a href="${f.url}" class="text-blue-600 underline" target="_blank">${f.fileName}</a></td>
+      ${user.role === "admin" ? `<td class="px-4 py-2">${f.ownerFullName}</td>` : ""}
+      <td class="px-4 py-2 text-right space-x-2">
+        <button class="text-yellow-600" onclick="editData(${f.id})">Edit</button>
+        <button class="text-red-600" onclick="deleteData(${f.id})">Hapus</button>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+}
+
+// ---------- Tambah ----------
+function showAddDialog() {
+  showDialog("Tambah Data", `
+    <div class="space-y-4">
+      <input id="titleInput" type="text" placeholder="Judul" class="w-full border rounded px-3 py-2" />
+      <textarea id="summaryInput" rows="3" placeholder="Ringkasan" class="w-full border rounded px-3 py-2"></textarea>
+      <input id="fileInput" type="file" class="w-full" />
+    </div>
+  `, async () => {
+    const title = document.getElementById("titleInput").value.trim();
+    const summary = document.getElementById("summaryInput").value.trim();
+    const file = document.getElementById("fileInput").files[0];
+
+    if (!title || !summary || !file) {
+      alert("Semua field harus diisi.");
+      return false;
+    }
+
+    const uploaded = await uploadToCloudinary(file);
     const files = getFiles();
     files.push({
       id: Date.now(),
-      url: data.secure_url,
-      fileName: file.name,
-      fileType: file.type,
+      title,
+      summary,
+      ...uploaded,
       ownerUsername: user.username,
       ownerFullName: user.fullName
     });
     saveFiles(files);
-
-    statusText.textContent = "Upload berhasil!";
-    fileInput.value = "";
-    renderUserTable();
-  } catch (err) {
-    console.error(err);
-    statusText.textContent = "Gagal upload!";
-  }
+    renderTable();
+    return true;
+  });
 }
 
-// ---------- Tabel User ----------
-function renderUserTable() {
-  const files = getFiles().filter(f => f.ownerUsername === user.username);
-  makeFileTable(userTable, files, true);
-}
-
-// ---------- Tabel Admin ----------
-function renderAdminTable() {
+// ---------- Edit ----------
+window.editData = function(id) {
   const files = getFiles();
-  makeFileTable(adminTable, files, false);
-}
+  const file = files.find(f => f.id === id);
+  if (!file) return;
 
-// ---------- Util buat Tabel ----------
-function makeFileTable(root, files, isUser) {
-  if (!files.length) {
-    root.innerHTML = "<tr><td class='p-2 text-center'>Belum ada data</td></tr>";
-    return;
-  }
+  showDialog("Edit Data", `
+    <div class="space-y-4">
+      <input id="editTitle" value="${file.title}" class="w-full border rounded px-3 py-2" />
+      <textarea id="editSummary" rows="3" class="w-full border rounded px-3 py-2">${file.summary}</textarea>
+      <input id="editFile" type="file" class="w-full" />
+    </div>
+  `, async () => {
+    const title = document.getElementById("editTitle").value.trim();
+    const summary = document.getElementById("editSummary").value.trim();
+    const fileInput = document.getElementById("editFile").files[0];
 
-  const rows = files.map((f, i) => `
-    <tr class="border-t">
-      <td class="p-2">${i + 1}</td>
-      <td class="p-2">${f.fileName}</td>
-      <td class="p-2">${f.fileType}</td>
-      <td class="p-2">
-        <a href="${f.url}" target="_blank" class="text-blue-600 underline">Preview</a>
-      </td>
-      ${isUser ? "" : `<td class="p-2">${f.ownerFullName}</td>`}
-      <td class="p-2 space-x-2">
-        <button class="text-yellow-600" onclick="editFile(${f.id})">Edit</button>
-        <button class="text-red-600" onclick="deleteFile(${f.id})">Hapus</button>
-        ${isUser ? "" : `
-          <button class="text-green-600" onclick="editUserName('${f.ownerUsername}')">
-            Edit Nama User
-          </button>`}
-      </td>
-    </tr>
-  `).join("");
+    if (!title || !summary) {
+      alert("Field wajib diisi.");
+      return false;
+    }
 
-  const head = `
-    <thead class="bg-gray-200">
-      <tr>
-        <th class="p-2">#</th>
-        <th class="p-2">Nama File</th>
-        <th class="p-2">Tipe</th>
-        <th class="p-2">Link</th>
-        ${isUser ? "" : `<th class="p-2">User</th>`}
-        <th class="p-2">Aksi</th>
-      </tr>
-    </thead>`;
+    if (fileInput) {
+      const uploaded = await uploadToCloudinary(fileInput);
+      Object.assign(file, uploaded);
+    }
 
-  root.innerHTML = head + `<tbody>${rows}</tbody>`;
-}
-
-// ---------- Aksi File ----------
-window.deleteFile = id => {
-  if (!confirm("Hapus file ini?")) return;
-  const files = getFiles().filter(f => f.id !== id);
-  saveFiles(files);
-  user.role === "user" ? renderUserTable() : renderAdminTable();
+    Object.assign(file, { title, summary });
+    saveFiles(files);
+    renderTable();
+    return true;
+  });
 };
 
-window.editFile = id => {
-  const files = getFiles();
-  const idx   = files.findIndex(f => f.id === id);
-  const newName = prompt("Nama file baru:", files[idx].fileName);
-  if (!newName) return;
-  files[idx].fileName = newName;
-  saveFiles(files);
-  user.role === "user" ? renderUserTable() : renderAdminTable();
+// ---------- Hapus ----------
+window.deleteData = function(id) {
+  showDeleteConfirm(() => {
+    const files = getFiles().filter(f => f.id !== id);
+    saveFiles(files);
+    renderTable();
+  });
 };
 
-// ---------- Aksi Admin: ubah nama user ----------
-window.editUserName = username => {
-  const users = getUsers();
-  const idx   = users.findIndex(u => u.username === username);
-  if (idx === -1) return;
-
-  const newName = prompt("Nama lengkap baru:", users[idx].fullName);
-  if (!newName) return;
-
-  users[idx].fullName = newName;
-  saveUsers(users);
-
-  // Perbarui nama pada semua file milik user tsb
-  const files = getFiles().map(f =>
-    f.ownerUsername === username ? { ...f, ownerFullName: newName } : f
-  );
-  saveFiles(files);
-
-  renderAdminTable();
-};
+// ---------- Init ----------
+renderTable();
