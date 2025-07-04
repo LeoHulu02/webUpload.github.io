@@ -6,7 +6,7 @@ const UPLOAD_PRESET = "preset_upload";
 const user = getCurrentUser();
 if (!user) window.location.href = "login.html";
 
-document.getElementById("greeting").textContent = `Halo, ${user.fullName} (${user.role})`;
+document.getElementById("greeting").textContent = `Halo, ${user.full_name} (${user.role})`;
 document.getElementById("logoutBtn").onclick = () => {
   logout();
   window.location.href = "login.html";
@@ -51,8 +51,8 @@ async function uploadToCloudinary(file) {
   if (!data.secure_url) throw new Error("Upload gagal");
   return {
     url: data.secure_url,
-    fileName: file.name,
-    fileType: file.type,
+    file_name: file.name,
+    file_type: file.type,
   };
 }
 
@@ -83,9 +83,11 @@ function hideDeleteConfirm() {
 }
 
 // ---------- Render Table ----------
-function renderTable() {
-  const allFiles = getFiles();
-  const files = user.role === "admin" ? allFiles : allFiles.filter(f => f.ownerUsername === user.username);
+async function renderTable() {
+  const allFiles = await getFiles();
+  const files = user.role === "admin"
+    ? allFiles
+    : allFiles.filter(f => f.owner_username === user.username);
 
   tableHead.innerHTML = `
     <tr>
@@ -111,8 +113,8 @@ function renderTable() {
       <td class="px-4 py-2">${i + 1}</td>
       <td class="px-4 py-2">${f.title}</td>
       <td class="px-4 py-2">${f.summary}</td>
-      <td class="px-4 py-2"><a href="${f.url}" class="text-blue-600 underline" target="_blank">${f.fileName}</a></td>
-      ${user.role === "admin" ? `<td class="px-4 py-2">${f.ownerFullName}</td>` : ""}
+      <td class="px-4 py-2"><a href="${f.url}" class="text-blue-600 underline" target="_blank">${f.file_name}</a></td>
+      ${user.role === "admin" ? `<td class="px-4 py-2">${f.owner_username}</td>` : ""}
       <td class="px-4 py-2 text-right space-x-2">
         <button class="text-yellow-600" onclick="editData(${f.id})">Edit</button>
         <button class="text-red-600" onclick="deleteData(${f.id})">Hapus</button>
@@ -141,25 +143,22 @@ function showAddDialog() {
     }
 
     const uploaded = await uploadToCloudinary(file);
-    const files = getFiles();
-    files.push({
+    await insertFile({
       id: Date.now(),
       title,
       summary,
       ...uploaded,
-      ownerUsername: user.username,
-      ownerFullName: user.fullName
+      owner_username: user.username,
+      // owner_fullname: user.full_name 
     });
-    saveFiles(files);
     renderTable();
     return true;
   });
 }
 
 // ---------- Edit ----------
-window.editData = function(id) {
-  const files = getFiles();
-  const file = files.find(f => f.id === id);
+window.editData = async function(id) {
+  const file = await getFileById(id);
   if (!file) return;
 
   showDialog("Edit Data", `
@@ -178,13 +177,13 @@ window.editData = function(id) {
       return false;
     }
 
+    const updateData = { title, summary };
     if (fileInput) {
       const uploaded = await uploadToCloudinary(fileInput);
-      Object.assign(file, uploaded);
+      Object.assign(updateData, uploaded);
     }
 
-    Object.assign(file, { title, summary });
-    saveFiles(files);
+    await updateFile(id, updateData);
     renderTable();
     return true;
   });
@@ -192,9 +191,8 @@ window.editData = function(id) {
 
 // ---------- Hapus ----------
 window.deleteData = function(id) {
-  showDeleteConfirm(() => {
-    const files = getFiles().filter(f => f.id !== id);
-    saveFiles(files);
+  showDeleteConfirm(async () => {
+    await deleteFile(id);
     renderTable();
   });
 };

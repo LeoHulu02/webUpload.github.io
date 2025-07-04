@@ -1,54 +1,45 @@
+<!-- login.html -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login</title>
-  <script src="https://cdn.tailwindcss.com"></script> 
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- <script>
+    const SUPABASE_URL = 'https://ryijghgahtvxhgvalgfs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  </script> -->
   <script defer src="js/utils.js"></script>
-  <script defer src="js/login.js"></script>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const username = e.target.username.value.trim();
+        const password = e.target.password.value.trim();
+
+        const user = await loginUser(username, password);
+        if (!user) {
+          alert("Username atau password salah!");
+          return;
+        }
+
+        setCurrentUser(user);
+        window.location.href = "index.html";
+      });
+    });
+  </script>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center min-h-screen px-4 py-12">
-  
-  <div class="bg-white shadow-xl rounded-lg p-8 w-full max-w-md transition-transform transform hover:scale-105 duration-300">
-    <h1 class="text-3xl font-extrabold mb-6 text-center text-gray-800">Login</h1>
-
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-        <input 
-          name="username" 
-          id="username" 
-          type="text" 
-          placeholder="Masukkan username" 
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-        />
-      </div>
-
-      <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-        <input 
-          name="password" 
-          id="password" 
-          type="password" 
-          placeholder="Masukkan password" 
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-        />
-      </div>
-
-      <button 
-        type="submit" 
-        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-      >
-        Masuk
-      </button>
-    </form>
-
-    <p class="text-center mt-6 text-sm text-gray-600">
-      Belum punya akun?
-      <a href="register.html" class="font-medium text-blue-600 hover:text-blue-800 underline transition">Daftar di sini</a>
-    </p>
-  </div>
-
+<body class="flex items-center justify-center h-screen bg-blue-50">
+  <form id="loginForm" class="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm space-y-4">
+    <h1 class="text-2xl font-bold text-center">Login</h1>
+    <input type="text" name="username" placeholder="Username" class="w-full border rounded px-3 py-2" required>
+    <input type="password" name="password" placeholder="Password" class="w-full border rounded px-3 py-2" required>
+    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Login</button>
+    <p class="text-center text-sm mt-2">Belum punya akun? <a href="register.html" class="text-blue-600">Daftar</a></p>
+  </form>
 </body>
 </html>
